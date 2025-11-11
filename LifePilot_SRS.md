@@ -187,12 +187,24 @@ FR-012 — Accessibility
   - Owner: Product / Data
   - Priority: High
   - Status: Open
+  - Milestone: Publish analytics event taxonomy, event schemas (OpenAPI/JSON Schema), and retention policy document.
+  - Acceptance criteria:
+    - A complete list of tracked events with field-level schemas and example payloads.
+    - Defined aggregates (daily/weekly/monthly) and retention windows with justification.
+    - Data minimization checklist and opt-in rules for contextual data.
+  - ETA: 2 weeks
 
 - TODO-002 — Complete API specification (REST/gRPC)
   - Description: Detailed endpoints, request/response schemas, auth flows, error codes, versioning plan.
   - Owner: Backend
   - Priority: High
   - Status: In progress
+  - Milestone: Produce OpenAPI v3 spec for REST and proto files for gRPC; provide mock server and example client snippets.
+  - Acceptance criteria:
+    - OpenAPI and proto definitions reviewed by Backend and Frontend teams.
+    - Auth flows documented and sample auth token exchange implemented in mock server.
+    - Backwards-compatibility/versioning plan for v1 documented.
+  - ETA: 3 weeks
 
 - TODO-003 — OAuth provider matrix & implementation plan
   - Description: Decide supported providers, scopes, consent UX, and server-side token handling.
@@ -205,18 +217,33 @@ FR-012 — Accessibility
   - Owner: Backend / Mobile
   - Priority: High
   - Status: Open
+  - Milestone: Publish sync design doc describing conflict model, CRDT vs LWW decisions, and UI merge patterns.
+  - Acceptance criteria:
+    - Sync spec reviewed with sample conflict scenarios and UX for user-assisted merges.
+    - Unit and integration tests covering common conflict types and offline->online reconciliation.
+  - ETA: 3 weeks
 
 - TODO-005 — Privacy policy draft and legal review
   - Description: Draft policy covering data collection, retention, export/delete, contextual data opt-in.
   - Owner: Legal / Product
   - Priority: High
   - Status: Open
+  - Milestone: Deliver privacy policy draft tailored to analytics, contextual features, and export/delete mechanics.
+  - Acceptance criteria:
+    - Legal sign-off on data flows and retention periods.
+    - Clear user-facing consent language for contextual data sources.
+  - ETA: 2 weeks
 
 - TODO-006 — Accessibility audit plan and checklist
   - Description: Define accessibility acceptance criteria, test devices/tools, remediation owners.
   - Owner: UX / QA
   - Priority: High
   - Status: Open
+  - Milestone: Produce an accessibility checklist (WCAG 2.1 AA baseline) and schedule audit across core screens.
+  - Acceptance criteria:
+    - All critical flows (signup, create task/goal, accept suggestion) meet WCAG AA or have documented exceptions.
+    - Remediation tasks created and owners assigned for any failures.
+  - ETA: 3 weeks
 
 - TODO-007 — Performance targets verification tests
   - Description: Create benchmarks for app launch time, sync latency, and memory usage. Set test harness.
@@ -241,6 +268,12 @@ FR-012 — Accessibility
   - Owner: Backend / Security
   - Priority: High
   - Status: In progress
+  - Milestone: Implement export endpoints and irreversible deletion workflow with audit trails and admin tools.
+  - Acceptance criteria:
+    - Users can request and download a complete data export in standard formats (JSON/CSV).
+    - Deletion requests remove all user data from active storage and create a verifiable audit record.
+    - Tests verifying exports and deletions across staging data sets.
+  - ETA: 3 weeks
 
 - TODO-011 — Define monetization and third-party integration scope
   - Description: Prioritize integrations, level-of-service, and potential paid features; impact on data flows.
@@ -253,12 +286,22 @@ FR-012 — Accessibility
   - Owner: Product / DevOps
   - Priority: High
   - Status: Open
+  - Milestone: Create a release checklist and canary/beta rollout plan with monitoring runbooks.
+  - Acceptance criteria:
+    - Checklist items complete (privacy disclosures, store metadata, feature flags).
+    - Metrics and alerts configured to detect regressions; rollback criteria documented.
+  - ETA: 2 weeks
 
 - TODO-013 — Security threat model & mitigation plan
   - Description: Create threat model, list mitigations (encryption, key management, secrets handling), conduct threat review.
   - Owner: Security / Backend
   - Priority: High
   - Status: Open
+  - Milestone: Deliver a threat model (STRIDE or similar) and prioritized mitigation backlog.
+  - Acceptance criteria:
+    - Threat model reviewed by Security and Engineering with mitigations assigned and tracked.
+    - High/critical findings resolved or have mitigation plans before beta release.
+  - ETA: 2 weeks
 
 - TODO-014 — CI/CD pipeline and automated release jobs
   - Description: Configure builds, tests, artifact signing, deployment stages, and rollback automation.

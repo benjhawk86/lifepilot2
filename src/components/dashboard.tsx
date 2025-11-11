@@ -6,7 +6,7 @@ import { Label } from '@/components/ui/label'
 import { Button } from '@/components/ui/button'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { StatCard } from '@/components/stat-card'
-import { Heart, TrendUp, Lightning } from '@phosphor-icons/react'
+import { Heart, TrendUp, Lightning, CalendarBlank } from '@phosphor-icons/react'
 import { useKV } from '@github/spark/hooks'
 import { toast } from 'sonner'
 import type { HealthProfile, BodyMeasurement, DietaryRecommendation } from '@/lib/types'
@@ -42,7 +42,7 @@ export function Dashboard() {
     try {
       setProfile(formData)
 
-      const promptText = `You are a certified nutritionist. Based on the following profile, calculate daily macronutrient targets:
+      const macrosPromptText = `You are a certified nutritionist. Based on the following profile, calculate daily macronutrient targets:
       
 Age: ${formData.age} years
 Weight: ${formData.weight} kg
@@ -60,19 +60,76 @@ Return ONLY a JSON object with this exact structure:
 
 Use evidence-based calculations. For protein, aim for 1.6-2.2g per kg bodyweight for muscle building, 1.2-1.6g for maintenance, and 1.8-2.5g for weight loss (higher protein helps preserve muscle). Calculate calories based on TDEE using the Mifflin-St Jeor equation adjusted for activity level.`
 
-      const result = await window.spark.llm(promptText, 'gpt-4o-mini', true)
-      const parsed = JSON.parse(result)
+      const macrosResult = await window.spark.llm(macrosPromptText, 'gpt-4o-mini', true)
+      const macros = JSON.parse(macrosResult)
+
+      const mealPlanPromptText = `You are a certified nutritionist creating a weekly meal plan. Based on these daily targets, create a complete 7-day meal plan:
+
+Daily Targets:
+- Calories: ${macros.calories} kcal
+- Protein: ${macros.protein}g
+- Fats: ${macros.fats}g
+- Carbs: ${macros.carbs}g
+
+User Profile:
+- Goal: ${formData.goal}
+- Activity Level: ${formData.activityLevel}
+
+Create varied, realistic meals for each day with breakfast, lunch, dinner, and 1-2 snacks. Each meal should include specific foods and portions. Make the meals practical and diverse.
+
+Return ONLY a JSON object with a "days" property containing exactly 7 day objects. Each day must have this structure:
+{
+  "days": [
+    {
+      "day": "Monday",
+      "breakfast": {
+        "name": "Meal Name",
+        "description": "Detailed meal with portions",
+        "calories": <number>,
+        "protein": <number>,
+        "fats": <number>,
+        "carbs": <number>
+      },
+      "lunch": { same structure as breakfast },
+      "dinner": { same structure as breakfast },
+      "snacks": [
+        { same structure as breakfast }
+      ]
+    }
+  ]
+}
+
+Ensure daily totals are close to targets (within 5-10%).`
+
+      const mealPlanResult = await window.spark.llm(mealPlanPromptText, 'gpt-4o-mini', true)
+      const mealPlanData = JSON.parse(mealPlanResult)
+
+      const processedDays = mealPlanData.days.map((day: any) => ({
+        ...day,
+        totalCalories: day.breakfast.calories + day.lunch.calories + day.dinner.calories + 
+          (day.snacks?.reduce((sum: number, s: any) => sum + s.calories, 0) || 0),
+        totalProtein: day.breakfast.protein + day.lunch.protein + day.dinner.protein + 
+          (day.snacks?.reduce((sum: number, s: any) => sum + s.protein, 0) || 0),
+        totalFats: day.breakfast.fats + day.lunch.fats + day.dinner.fats + 
+          (day.snacks?.reduce((sum: number, s: any) => sum + s.fats, 0) || 0),
+        totalCarbs: day.breakfast.carbs + day.lunch.carbs + day.dinner.carbs + 
+          (day.snacks?.reduce((sum: number, s: any) => sum + s.carbs, 0) || 0)
+      }))
 
       const recommendation: DietaryRecommendation = {
-        calories: parsed.calories,
-        protein: parsed.protein,
-        fats: parsed.fats,
-        carbs: parsed.carbs,
+        calories: macros.calories,
+        protein: macros.protein,
+        fats: macros.fats,
+        carbs: macros.carbs,
         generatedAt: new Date().toISOString(),
+        weeklyMealPlan: {
+          days: processedDays,
+          generatedAt: new Date().toISOString()
+        }
       }
 
       setDietPlan(recommendation)
-      toast.success('AI dietary plan generated successfully!')
+      toast.success('AI dietary plan and weekly meal plan generated!')
     } catch (error) {
       console.error('Error generating diet plan:', error)
       toast.error('Failed to generate dietary plan. Please try again.')
@@ -300,84 +357,169 @@ Use evidence-based calculations. For protein, aim for 1.6-2.2g per kg bodyweight
 
         <TabsContent value="diet" className="space-y-4">
           {dietPlan ? (
-            <Card className="p-6">
-              <div className="flex items-center gap-3 mb-6">
-                <Lightning weight="duotone" className="text-primary" size={32} />
-                <div>
-                  <h3 className="font-semibold text-lg">Your AI-Generated Dietary Plan</h3>
-                  <p className="text-sm text-muted-foreground">
-                    Generated on {new Date(dietPlan.generatedAt).toLocaleDateString()}
-                  </p>
-                </div>
-              </div>
-
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                <div>
-                  <h4 className="font-medium mb-3">Daily Targets</h4>
-                  <div className="space-y-3">
-                    <div className="flex justify-between items-center">
-                      <span className="text-muted-foreground">Calories</span>
-                      <span className="font-bold text-lg stat-number">{dietPlan.calories} kcal</span>
-                    </div>
-                    <div className="flex justify-between items-center">
-                      <span className="text-muted-foreground">Protein</span>
-                      <span className="font-bold text-lg stat-number">{dietPlan.protein}g</span>
-                    </div>
-                    <div className="flex justify-between items-center">
-                      <span className="text-muted-foreground">Fats</span>
-                      <span className="font-bold text-lg stat-number">{dietPlan.fats}g</span>
-                    </div>
-                    <div className="flex justify-between items-center">
-                      <span className="text-muted-foreground">Carbohydrates</span>
-                      <span className="font-bold text-lg stat-number">{dietPlan.carbs}g</span>
-                    </div>
+            <>
+              <Card className="p-6">
+                <div className="flex items-center gap-3 mb-6">
+                  <Lightning weight="duotone" className="text-primary" size={32} />
+                  <div>
+                    <h3 className="font-semibold text-lg">Your AI-Generated Dietary Plan</h3>
+                    <p className="text-sm text-muted-foreground">
+                      Generated on {new Date(dietPlan.generatedAt).toLocaleDateString()}
+                    </p>
                   </div>
                 </div>
 
-                <div>
-                  <h4 className="font-medium mb-3">Macro Distribution</h4>
-                  <div className="space-y-2">
-                    {(() => {
-                      const totalCals = dietPlan.protein * 4 + dietPlan.fats * 9 + dietPlan.carbs * 4
-                      const proteinPct = Math.round((dietPlan.protein * 4 * 100) / totalCals)
-                      const fatPct = Math.round((dietPlan.fats * 9 * 100) / totalCals)
-                      const carbPct = Math.round((dietPlan.carbs * 4 * 100) / totalCals)
-                      return (
-                        <>
-                          <div>
-                            <div className="flex justify-between text-sm mb-1">
-                              <span>Protein</span>
-                              <span className="font-medium">{proteinPct}%</span>
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                  <div>
+                    <h4 className="font-medium mb-3">Daily Targets</h4>
+                    <div className="space-y-3">
+                      <div className="flex justify-between items-center">
+                        <span className="text-muted-foreground">Calories</span>
+                        <span className="font-bold text-lg stat-number">{dietPlan.calories} kcal</span>
+                      </div>
+                      <div className="flex justify-between items-center">
+                        <span className="text-muted-foreground">Protein</span>
+                        <span className="font-bold text-lg stat-number">{dietPlan.protein}g</span>
+                      </div>
+                      <div className="flex justify-between items-center">
+                        <span className="text-muted-foreground">Fats</span>
+                        <span className="font-bold text-lg stat-number">{dietPlan.fats}g</span>
+                      </div>
+                      <div className="flex justify-between items-center">
+                        <span className="text-muted-foreground">Carbohydrates</span>
+                        <span className="font-bold text-lg stat-number">{dietPlan.carbs}g</span>
+                      </div>
+                    </div>
+                  </div>
+
+                  <div>
+                    <h4 className="font-medium mb-3">Macro Distribution</h4>
+                    <div className="space-y-2">
+                      {(() => {
+                        const totalCals = dietPlan.protein * 4 + dietPlan.fats * 9 + dietPlan.carbs * 4
+                        const proteinPct = Math.round((dietPlan.protein * 4 * 100) / totalCals)
+                        const fatPct = Math.round((dietPlan.fats * 9 * 100) / totalCals)
+                        const carbPct = Math.round((dietPlan.carbs * 4 * 100) / totalCals)
+                        return (
+                          <>
+                            <div>
+                              <div className="flex justify-between text-sm mb-1">
+                                <span>Protein</span>
+                                <span className="font-medium">{proteinPct}%</span>
+                              </div>
+                              <div className="h-2 bg-secondary rounded-full overflow-hidden">
+                                <div className="h-full bg-primary" style={{ width: `${proteinPct}%` }} />
+                              </div>
                             </div>
-                            <div className="h-2 bg-secondary rounded-full overflow-hidden">
-                              <div className="h-full bg-primary" style={{ width: `${proteinPct}%` }} />
+                            <div>
+                              <div className="flex justify-between text-sm mb-1">
+                                <span>Fats</span>
+                                <span className="font-medium">{fatPct}%</span>
+                              </div>
+                              <div className="h-2 bg-secondary rounded-full overflow-hidden">
+                                <div className="h-full bg-warning" style={{ width: `${fatPct}%` }} />
+                              </div>
                             </div>
-                          </div>
-                          <div>
-                            <div className="flex justify-between text-sm mb-1">
-                              <span>Fats</span>
-                              <span className="font-medium">{fatPct}%</span>
+                            <div>
+                              <div className="flex justify-between text-sm mb-1">
+                                <span>Carbs</span>
+                                <span className="font-medium">{carbPct}%</span>
+                              </div>
+                              <div className="h-2 bg-secondary rounded-full overflow-hidden">
+                                <div className="h-full bg-success" style={{ width: `${carbPct}%` }} />
+                              </div>
                             </div>
-                            <div className="h-2 bg-secondary rounded-full overflow-hidden">
-                              <div className="h-full bg-warning" style={{ width: `${fatPct}%` }} />
-                            </div>
-                          </div>
-                          <div>
-                            <div className="flex justify-between text-sm mb-1">
-                              <span>Carbs</span>
-                              <span className="font-medium">{carbPct}%</span>
-                            </div>
-                            <div className="h-2 bg-secondary rounded-full overflow-hidden">
-                              <div className="h-full bg-success" style={{ width: `${carbPct}%` }} />
-                            </div>
-                          </div>
-                        </>
-                      )
-                    })()}
+                          </>
+                        )
+                      })()}
+                    </div>
                   </div>
                 </div>
-              </div>
-            </Card>
+              </Card>
+
+              {dietPlan.weeklyMealPlan && (
+                <Card className="p-6">
+                  <div className="flex items-center gap-3 mb-6">
+                    <CalendarBlank weight="duotone" className="text-accent" size={32} />
+                    <div>
+                      <h3 className="font-semibold text-lg">Weekly Meal Plan</h3>
+                      <p className="text-sm text-muted-foreground">
+                        AI-generated personalized meal suggestions
+                      </p>
+                    </div>
+                  </div>
+
+                  <div className="space-y-4">
+                    {dietPlan.weeklyMealPlan.days.map((day, index) => (
+                      <div key={index} className="border rounded-lg p-4">
+                        <div className="flex items-center justify-between mb-4">
+                          <h4 className="font-semibold text-lg">{day.day}</h4>
+                          <div className="text-sm text-muted-foreground">
+                            <span className="stat-number">{Math.round(day.totalCalories)}</span> kcal •{' '}
+                            <span className="stat-number">{Math.round(day.totalProtein)}g</span> protein
+                          </div>
+                        </div>
+
+                        <div className="space-y-3">
+                          <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                            <div className="space-y-1">
+                              <div className="font-medium text-sm text-primary">🍳 Breakfast - {day.breakfast.name}</div>
+                              <p className="text-sm text-muted-foreground">{day.breakfast.description}</p>
+                              <div className="flex gap-3 text-xs text-muted-foreground">
+                                <span className="stat-number">{day.breakfast.calories}cal</span>
+                                <span className="stat-number">{day.breakfast.protein}g P</span>
+                                <span className="stat-number">{day.breakfast.fats}g F</span>
+                                <span className="stat-number">{day.breakfast.carbs}g C</span>
+                              </div>
+                            </div>
+
+                            <div className="space-y-1">
+                              <div className="font-medium text-sm text-primary">🥗 Lunch - {day.lunch.name}</div>
+                              <p className="text-sm text-muted-foreground">{day.lunch.description}</p>
+                              <div className="flex gap-3 text-xs text-muted-foreground">
+                                <span className="stat-number">{day.lunch.calories}cal</span>
+                                <span className="stat-number">{day.lunch.protein}g P</span>
+                                <span className="stat-number">{day.lunch.fats}g F</span>
+                                <span className="stat-number">{day.lunch.carbs}g C</span>
+                              </div>
+                            </div>
+
+                            <div className="space-y-1">
+                              <div className="font-medium text-sm text-primary">🍽️ Dinner - {day.dinner.name}</div>
+                              <p className="text-sm text-muted-foreground">{day.dinner.description}</p>
+                              <div className="flex gap-3 text-xs text-muted-foreground">
+                                <span className="stat-number">{day.dinner.calories}cal</span>
+                                <span className="stat-number">{day.dinner.protein}g P</span>
+                                <span className="stat-number">{day.dinner.fats}g F</span>
+                                <span className="stat-number">{day.dinner.carbs}g C</span>
+                              </div>
+                            </div>
+
+                            {day.snacks && day.snacks.length > 0 && (
+                              <div className="space-y-1">
+                                <div className="font-medium text-sm text-primary">🥜 Snacks</div>
+                                {day.snacks.map((snack, snackIdx) => (
+                                  <div key={snackIdx} className="mb-2">
+                                    <p className="text-sm font-medium">{snack.name}</p>
+                                    <p className="text-xs text-muted-foreground">{snack.description}</p>
+                                    <div className="flex gap-3 text-xs text-muted-foreground">
+                                      <span className="stat-number">{snack.calories}cal</span>
+                                      <span className="stat-number">{snack.protein}g P</span>
+                                      <span className="stat-number">{snack.fats}g F</span>
+                                      <span className="stat-number">{snack.carbs}g C</span>
+                                    </div>
+                                  </div>
+                                ))}
+                              </div>
+                            )}
+                          </div>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                </Card>
+              )}
+            </>
           ) : (
             <Card className="p-12 text-center">
               <Lightning weight="duotone" className="mx-auto mb-4 text-muted-foreground" size={48} />

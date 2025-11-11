@@ -24,12 +24,39 @@ export interface BodyMeasurement {
   arms?: number
 }
 
+export interface Meal {
+  name: string
+  calories: number
+  protein: number
+  fats: number
+  carbs: number
+  description: string
+}
+
+export interface DayMealPlan {
+  day: string
+  breakfast: Meal
+  lunch: Meal
+  dinner: Meal
+  snacks: Meal[]
+  totalCalories: number
+  totalProtein: number
+  totalFats: number
+  totalCarbs: number
+}
+
+export interface WeeklyMealPlan {
+  days: DayMealPlan[]
+  generatedAt: string
+}
+
 export interface DietaryRecommendation {
   calories: number
   protein: number
   fats: number
   carbs: number
   generatedAt: string
+  weeklyMealPlan?: WeeklyMealPlan
 }
 
 export interface Exercise {

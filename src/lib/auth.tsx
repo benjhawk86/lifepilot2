@@ -12,7 +12,7 @@ interface AuthContextType {
 const AuthContext = createContext<AuthContextType | undefined>(undefined)
 
 export function AuthProvider({ children }: { children: ReactNode }) {
-  const [user, setUser] = useKV<User | null>('lifepilot-user', null)
+  const [user, setUser, deleteUser] = useKV<User | null>('lifepilot-user', null)
 
   const login = async (email: string, password: string, isAdmin = false) => {
     const mockUser: User = {
